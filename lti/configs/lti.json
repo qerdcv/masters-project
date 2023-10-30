@@ -1,0 +1,14 @@
+{
+    "http://localhost": [{
+        "default": true,
+        "client_id": "D98GOHur6VR8GtV",
+        "auth_login_url": "http://localhost/mod/lti/auth.php",
+        "auth_token_url": "http://localhost/mod/lti/token.php",
+        "auth_audience": null,
+        "key_set_url": "http://localhost/mod/lti/certs.php",
+        "key_set": null,
+        "private_key_file": "private.key",
+        "public_key_file": "public.key",
+        "deployment_ids": ["1"]
+    }]
+}

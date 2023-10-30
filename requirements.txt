@@ -1,3 +1,8 @@
-Django==4.2.4
-django-allauth==0.55.0
-channels[daphne]
+Flask
+Flask-Caching
+Flask-Session2
+flask-sock
+
+werkzeug
+
+PyLTI1p3

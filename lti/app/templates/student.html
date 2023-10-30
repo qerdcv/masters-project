@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block head %}
+    <script>
+        let email = "{{ email }}";
+        let launchID = "{{ launch_id }}";
+    </script>
+    <script type="text/javascript" defer src="{{ url_for('static', filename='js/socket.js') }}"
+            charset="utf-8"></script>
+    <script type="text/javascript" defer src="{{ url_for('static', filename='js/test_runner.js') }}"></script>
+{% endblock %}
+{% block content %}
+<div>
+    <h1>Test for: {{ email }}</h1>
+    <h2>Server state: <span style="color: red" id="server-state">off</span></h2>
+
+    <h3>Tests</h3>
+    <ul id="tests">
+        {% for test in tests %}
+            <li id="test-{{ test.name }}" data-test-name="{{ test.name }}">{{ test.description }}</li>
+        {% endfor %}
+    </ul>
+
+    <button id="btn-run" class="btn btn-success">Run tests</button>
+</div>
+{% endblock %}
