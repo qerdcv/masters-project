@@ -18,6 +18,20 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var (
+	userEmail,
+	ltiHost,
+	testsDir,
+	env string
+)
+
+func init() {
+	userEmail = os.Getenv("USER_EMAIL")
+	ltiHost = os.Getenv("LTI_HOST")
+	testsDir = os.Getenv("TESTS_DIR")
+	env = os.Getenv("ENV")
+}
+
 func logErr(msg string) {
 	log.Println("ERROR:", msg)
 }
@@ -25,11 +39,6 @@ func logErr(msg string) {
 func fatal(msg string) {
 	logErr(msg)
 	os.Exit(1)
-}
-
-type wsMessage struct {
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
 }
 
 func proceedMessages(ctx context.Context, c *websocket.Conn) {
@@ -93,15 +102,20 @@ func runTests(tests []string) ([]testResult, error) {
 }
 
 func runTest(test string) (testResult, error) {
-	downloadDir := "/home/qerdcv/own_projects/python/masters-project/worker/"
-	resp, err := http.Get("http://192.168.31.57:9001/tests/download/" + test)
+	scheme := "http"
+	if env == "prod" {
+		scheme = "https"
+	}
+
+	u := url.URL{Scheme: scheme, Host: ltiHost, Path: "/tests/download/" + test}
+	resp, err := http.Get(u.String())
 	if err != nil {
 		return testResult{}, fmt.Errorf("http get: %w", err)
 	}
 
 	defer resp.Body.Close()
 
-	f, err := os.Create(downloadDir + test)
+	f, err := os.Create(testsDir + test)
 	if err != nil {
 		return testResult{}, fmt.Errorf("create test: %w", err)
 	}
@@ -116,7 +130,7 @@ func runTest(test string) (testResult, error) {
 
 	defer os.Remove(test)
 
-	if err = os.Chmod(downloadDir+test, fs.ModePerm); err != nil {
+	if err = os.Chmod(testsDir+test, fs.ModePerm); err != nil {
 		return testResult{}, fmt.Errorf("change test mode: %w", err)
 	}
 
@@ -124,9 +138,9 @@ func runTest(test string) (testResult, error) {
 		Name: test,
 	}
 
-	if err = exec.Command(downloadDir + test).Run(); err != nil {
+	if out, execErr := exec.Command(testsDir + test).CombinedOutput(); execErr != nil {
 		result.Result.Status = "failed"
-		result.Result.Error = err.Error()
+		result.Result.Error = fmt.Sprintf("%s: %s", string(out), execErr.Error())
 		return result, nil
 	}
 
@@ -135,7 +149,12 @@ func runTest(test string) (testResult, error) {
 }
 
 func main() {
-	u := url.URL{Scheme: "ws", Host: "192.168.31.57:9001", Path: "/ws/server/rikepic@gmail.com"}
+	scheme := "ws"
+	if env == "prod" {
+		scheme = "wss"
+	}
+
+	u := url.URL{Scheme: scheme, Host: ltiHost, Path: "/ws/server/" + userEmail}
 	c, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		fatal(err.Error() + resp.Status)
