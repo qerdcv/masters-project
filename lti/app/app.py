@@ -17,19 +17,7 @@ from pylti1p3.tool_config import ToolConfJsonFile
 from pylti1p3.registration import Registration
 
 
-class ReverseProxied:
-    def __init__(self, _app):
-        self.app = _app
-
-    def __call__(self, environ, start_response):
-        scheme = environ.get('HTTP_X_FORWARDED_PROTO')
-        if scheme:
-            environ['wsgi.url_scheme'] = scheme
-        return self.app(environ, start_response)
-
-
-app = Flask('pylti1p3-app-example', template_folder='templates', static_folder='static')
-app.wsgi_app = ReverseProxied(app.wsgi_app)
+app = Flask('lti-imim-22-1', template_folder='templates', static_folder='static')
 sock = Sock(app)
 
 config = {
@@ -40,10 +28,10 @@ config = {
     "SECRET_KEY": "replace-me",
     "SESSION_TYPE": "filesystem",
     "SESSION_FILE_DIR": mkdtemp(),
-    "SESSION_COOKIE_NAME": "pylti1p3-flask-app-sessionid",
+    "SESSION_COOKIE_NAME": "lti-imim-22-1-sessionid",
     "SESSION_COOKIE_HTTPONLY": True,
-    "SESSION_COOKIE_SECURE": False,   # should be True in case of HTTPS usage (production)
-    "SESSION_COOKIE_SAMESITE": None,  # should be 'None' in case of HTTPS usage (production)
+    "SESSION_COOKIE_SECURE": True,
+    "SESSION_COOKIE_SAMESITE": 'None',
     "DEBUG_TB_INTERCEPT_REDIRECTS": False,
     "SOCK_SERVER_OPTIONS": {
         'ping_interval': 25
