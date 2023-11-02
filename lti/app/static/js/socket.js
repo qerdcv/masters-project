@@ -1,5 +1,5 @@
 const serverState = document.getElementById('server-state');
-const ws = new WebSocket(`ws://192.168.31.57:9001/ws/client/${email}`);
+const ws = new WebSocket(`wss://lti.qerdcv.com/ws/client/${email}`);
 
 ws.onmessage = (e) => {
     handleEvent(JSON.parse(e.data));
