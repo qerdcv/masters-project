@@ -19,7 +19,7 @@ jobs:
 
       - name: Deploy
         run: |
-          rsync -avz lti ${{ secrets.RASPBERRY_USER }}@${{ secrets.RASPBERRY_HOST }}:~/lti
+          rsync -avz lti ${{ secrets.RASPBERRY_USER }}@${{ secrets.RASPBERRY_HOST }}:~
           ssh -T ${{ secrets.RASPBERRY_USER }}@${{ secrets.RASPBERRY_HOST }} << EOF
             sudo systemctl restart lti
           EOF
