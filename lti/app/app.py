@@ -23,7 +23,8 @@ sock = Sock(app)
 config = {
     "DEBUG": True,
     "ENV": "development",
-    "CACHE_TYPE": "simple",
+    "CACHE_TYPE": "FileSystemCache",
+    "CACHE_DIR": mkdtemp(),
     "CACHE_DEFAULT_TIMEOUT": 600,
     "SECRET_KEY": "replace-me",
     "SESSION_TYPE": "filesystem",
