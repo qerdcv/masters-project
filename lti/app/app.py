@@ -3,8 +3,6 @@ import os
 import json
 import typing as t
 
-from tempfile import mkdtemp
-
 from flask.json import jsonify
 from flask import Flask, render_template, send_file, request
 from flask_sock import Sock, Server, ConnectionClosed
@@ -16,21 +14,21 @@ from pylti1p3.lineitem import LineItem
 from pylti1p3.tool_config import ToolConfJsonFile
 from pylti1p3.registration import Registration
 
+from temp import make_temp_dir
+
 app = Flask('lti-imim-22-1', template_folder='templates', static_folder='static')
 sock = Sock(app)
 
-CACHE_DIR = mkdtemp()
-print(CACHE_DIR)
 
 app.config.from_mapping({
     "DEBUG": True,
     "ENV": "development",
     "CACHE_TYPE": "FileSystemCache",
-    "CACHE_DIR": CACHE_DIR,
+    "CACHE_DIR": make_temp_dir('cache'),
     "CACHE_DEFAULT_TIMEOUT": 600,
     "SECRET_KEY": "replace-me",
     "SESSION_TYPE": "filesystem",
-    "SESSION_FILE_DIR": mkdtemp(),
+    "SESSION_FILE_DIR": make_temp_dir('session'),
     "SESSION_COOKIE_NAME": "lti-imim-22-1-sessionid",
     "SESSION_COOKIE_HTTPONLY": True,
     "SESSION_COOKIE_SECURE": True,
