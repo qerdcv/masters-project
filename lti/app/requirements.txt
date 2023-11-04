@@ -1,6 +1,8 @@
 Flask
 Flask-Caching
 Flask-Session2
+Flask-SQLAlchemy
+Flask-Migrate
 flask-sock
 
 werkzeug
