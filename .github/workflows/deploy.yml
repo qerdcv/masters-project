@@ -12,14 +12,14 @@ jobs:
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
-          key: ${{ secrets.RASPBERRY_PASS }}
+          key: ${{ secrets.SERVER_PASS }}
           known_hosts: 'placeholder'
       - name: Adding known_hosts
-        run: ssh-keyscan -H ${{ secrets.RASPBERRY_HOST }} >> ~/.ssh/known_hosts
+        run: ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy
         run: |
-          rsync -avz lti ${{ secrets.RASPBERRY_USER }}@${{ secrets.RASPBERRY_HOST }}:~
-          ssh -T ${{ secrets.RASPBERRY_USER }}@${{ secrets.RASPBERRY_HOST }} << EOF
+          rsync -avz lti/* ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/apps/lti
+          ssh -T ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << EOF
             sudo systemctl restart lti
           EOF
