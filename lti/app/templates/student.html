@@ -7,7 +7,9 @@
     </script>
     <script type="text/javascript" defer src="{{ url_for('static', filename='js/socket.js') }}"
             charset="utf-8"></script>
-    <script type="text/javascript" defer src="{{ url_for('static', filename='js/test_runner.js') }}"></script>
+    {% if task %}
+        <script type="text/javascript" defer src="{{ url_for('static', filename='js/test_runner.js') }}"></script>
+    {% endif %}
 {% endblock %}
 {% block content %}
     <div class="d-flex flex-column justify-content-center align-items-center">
@@ -21,9 +23,9 @@
                     <li id="test-{{ test.file_name }}" data-test-name="{{ test.file_name }}">{{ test.description }}</li>
                 {% endfor %}
             </ul>
+            <button id="btn-run" class="btn btn-success">Run tests</button>
         {% else %}
             <h3>There is no task yet :(</h3>
         {% endif %}
-        <button id="btn-run" class="btn btn-success">Run tests</button>
     </div>
 {% endblock %}
