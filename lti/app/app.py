@@ -1,6 +1,7 @@
 import datetime
 import os
 import json
+import shutil
 import typing as t
 
 from flask.json import jsonify
@@ -116,31 +117,28 @@ def launch():
     launch_data_storage = get_launch_data_storage()
     message_launch = FlaskMessageLaunch(flask_request, tool_conf, launch_data_storage=launch_data_storage)
     message_launch_data = message_launch.get_launch_data()
-
+    task_id = message_launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["id"]
     tpl_kwargs = {
         "page_title": PAGE_TITLE,
         "is_deep_link_launch": message_launch.is_deep_link_launch(),
         "launch_data": message_launch.get_launch_data(),
         "launch_id": message_launch.get_launch_id(),
         "email": message_launch_data.get("email", ""),
-        "task_id": message_launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["id"],
+        "task_id": task_id,
     }
+
+    task = db.session.get(Task, task_id)
+    tpl_kwargs.update({
+        "task": task
+    })
+
+    if task:
+        tpl_kwargs.update({
+            "tests": task.tests
+        })
 
     if message_launch.check_teacher_access():
         return render_template("teacher.html", **tpl_kwargs)
-
-    tpl_kwargs.update({
-        "tests": [
-            {
-                "name": "check_docker",
-                "description": "Check docker installation",
-            },
-            {
-                "name": "failed",
-                "description": "Test should be failed.",
-            },
-        ]
-    })
 
     return render_template("student.html", **tpl_kwargs)
 
@@ -248,19 +246,28 @@ def scoreboard(launch_id):
 @app.route('/tests', methods=['POST'])
 def create_tests():
     form = request.form
+    task_id = form['task_id']
     media_root = app.config['MEDIA_ROOT']
-    task_dir = os.path.join(media_root, str(form['task_id']))
+    task_dir = os.path.join(media_root, str(task_id))
+
+    db.session.query(Task).filter(Task.id == task_id).delete()
+    db.session.query(Test).filter(Test.task_id == task_id).delete()
+
     task = Task(id=form['task_id'], description=form['description'])
     db.session.add(task)
     if not os.path.exists(task_dir):
         os.mkdir(task_dir)
+    else:
+        # recreate directory
+        shutil.rmtree(task_dir)
+        os.mkdir(task_dir)
 
-    for idx, tf in enumerate(request.files):
+    for tf in request.files:
         f = request.files[tf]
         filename = secure_filename(f.filename)
-        f.save(os.path.join(task_dir, filename))
-
+        idx = int(tf.split('-')[2])
         db.session.add(Test(description=form[f'test-description-{idx}'], task_id=task.id, file_name=filename))
+        f.save(os.path.join(task_dir, filename))
 
     db.session.commit()
     return jsonify({
@@ -275,6 +282,7 @@ servers: dict[str, Server] = {}
 class Event(t.TypedDict):
     event: str
     args: list
+
 
 @app.route("/tests/run/<email>", methods=["POST"])
 def run_tests(email):
@@ -334,9 +342,9 @@ def client_sock(ws: Server, email: str):
             return
 
 
-@app.route("/tests/download/<filename>", methods=["GET"])
-def download_test(filename):
-    return send_file(os.path.join(app.root_path, "tests", filename))
+@app.route("/tests/download/<task_id>/<filename>", methods=["GET"])
+def download_test(task_id, filename):
+    return send_file(os.path.join(app.config['MEDIA_ROOT'], task_id, filename))
 
 
 if __name__ == "__main__":

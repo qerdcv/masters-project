@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 
@@ -41,6 +42,11 @@ func fatal(msg string) {
 	os.Exit(1)
 }
 
+type testsRequest struct {
+	TaskID string   `json:"task_id"`
+	Tests  []string `json:"tests"`
+}
+
 func proceedMessages(ctx context.Context, c *websocket.Conn) {
 	for {
 		select {
@@ -53,7 +59,7 @@ func proceedMessages(ctx context.Context, c *websocket.Conn) {
 				return
 			}
 
-			var tests []string
+			var tests testsRequest
 			if err = json.Unmarshal(message, &tests); err != nil {
 				logErr(err.Error())
 				continue
@@ -87,10 +93,10 @@ type testResult struct {
 	} `json:"result"`
 }
 
-func runTests(tests []string) ([]testResult, error) {
-	results := make([]testResult, len(tests))
-	for idx, test := range tests {
-		result, err := runTest(test)
+func runTests(testsReq testsRequest) ([]testResult, error) {
+	results := make([]testResult, len(testsReq.Tests))
+	for idx, test := range testsReq.Tests {
+		result, err := runTest(testsReq.TaskID, test)
 		if err != nil {
 			return nil, fmt.Errorf("run test %s: %w", test, err)
 		}
@@ -101,13 +107,13 @@ func runTests(tests []string) ([]testResult, error) {
 	return results, nil
 }
 
-func runTest(test string) (testResult, error) {
+func runTest(taskID string, test string) (testResult, error) {
 	scheme := "http"
 	if env == "prod" {
 		scheme = "https"
 	}
 
-	u := url.URL{Scheme: scheme, Host: ltiHost, Path: "/tests/download/" + test}
+	u := url.URL{Scheme: scheme, Host: ltiHost, Path: "/tests/download/" + taskID + "/" + test}
 	resp, err := http.Get(u.String())
 	if err != nil {
 		return testResult{}, fmt.Errorf("http get: %w", err)
@@ -115,7 +121,8 @@ func runTest(test string) (testResult, error) {
 
 	defer resp.Body.Close()
 
-	f, err := os.Create(testsDir + test)
+	testPath := path.Join(testsDir, fmt.Sprintf("%s_%s", test, taskID))
+	f, err := os.Create(testPath)
 	if err != nil {
 		return testResult{}, fmt.Errorf("create test: %w", err)
 	}
@@ -128,9 +135,9 @@ func runTest(test string) (testResult, error) {
 		return testResult{}, fmt.Errorf("close file: %w", err)
 	}
 
-	defer os.Remove(test)
+	defer os.Remove(testPath)
 
-	if err = os.Chmod(testsDir+test, fs.ModePerm); err != nil {
+	if err = os.Chmod(testPath, fs.ModePerm); err != nil {
 		return testResult{}, fmt.Errorf("change test mode: %w", err)
 	}
 
@@ -138,7 +145,7 @@ func runTest(test string) (testResult, error) {
 		Name: test,
 	}
 
-	if out, execErr := exec.Command(testsDir + test).CombinedOutput(); execErr != nil {
+	if out, execErr := exec.Command(testPath).CombinedOutput(); execErr != nil {
 		result.Result.Status = "failed"
 		result.Result.Error = fmt.Sprintf("%s: %s", string(out), execErr.Error())
 		return result, nil

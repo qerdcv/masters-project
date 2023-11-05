@@ -12,7 +12,7 @@ func fatal(msg string) {
 }
 
 func main() {
-	if err := exec.Command("dockasr", "version").Run(); err != nil {
-		fatal(fmt.Sprintf("check docker: %s", err.Error()))
+	if err := exec.Command("invalid").Run(); err != nil {
+		fatal(fmt.Sprintf("exec command: %s", err.Error()))
 	}
 }

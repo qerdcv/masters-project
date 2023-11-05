@@ -1,7 +1,5 @@
 let addBtn = document.getElementById("add-btn");
 const tests = document.getElementById("tests");
-let dataIndex = 0;
-
 
 addBtn.addEventListener('click', handleAddClick)
 
@@ -26,11 +24,13 @@ function createTestRow(dataIndex) {
     testNameInput.name = `test-description-${dataIndex}`;
     testNameInput.classList.add('form-control', 'mx-2');
     testNameInput.placeholder = 'Test description';
+    testNameInput.required = true;
     testRow.appendChild(testNameInput);
     const testFile = document.createElement('input');
     testFile.type = 'file';
     testFile.name = `test-file-${dataIndex}`
     testFile.id = `test-file-${dataIndex}`
+    testFile.required = true;
     testFile.classList.add('form-control', 'mx-2');
     testRow.appendChild(testFile)
     testRow.appendChild(addBtn);
@@ -41,10 +41,12 @@ function createRemoveButton() {
     const btn = document.createElement('button')
     btn.classList.add('btn', 'btn-danger');
     btn.textContent = '-';
-    btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.target.parentElement.remove();
-    });
+    btn.addEventListener('click', handleRemoveClick);
 
     return btn;
+}
+
+function handleRemoveClick(e) {
+        e.preventDefault();
+        e.target.parentElement.remove();
 }

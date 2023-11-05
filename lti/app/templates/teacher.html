@@ -2,7 +2,8 @@
 
 {% block head %}
     <script>
-    const taskId = +"{{ task_id }}";
+        const taskId = +"{{ task_id }}";
+        let dataIndex = +"{{ tests|length }}";
     </script>
     <script type="text/javascript" defer src="{{ url_for('static', filename='js/test_add.js') }}"
             charset="utf-8"></script>
@@ -12,23 +13,36 @@
 
 {% block content %}
     <h1>Teacher {{ email }}</h1>
-    <div class="d-flex justify-content-center align-items-center flex-column">
+    <form id="tests-form" class="d-flex justify-content-center align-items-center flex-column">
         <div class="mb-3">
             <label class="form-label" for="description">Task Description:</label>
-            <textarea class="form-control" id="description" name="description"></textarea>
+            <textarea class="form-control" id="description" name="description">{{ task.description }}</textarea>
         </div>
         <div class="mb-3">
             <h5>Add tests:</h5>
 
             <div id="tests">
-                <div class="d-flex flex-row justify-content-between mb-3" id="test-0">
-                    <input type="text" name="test-description-0" class="form-control mx-2" placeholder="Test description"/>
-                    <input type="file" name="test-file-0" id="test-file-0" class="form-control mx-2"/>
-                    <button id="add-btn" class="btn btn-success">+</button>
-                </div>
+                {% for test in tests %}
+                    <div class="d-flex flex-row justify-content-between mb-3" id="test-{{ loop.index0 }}">
+                        <input required type="text" name="test-description-{{ loop.index0 }}" class="form-control mx-2"
+                               placeholder="Test description" value="{{ test.description }}"/>
+                        <input required type="file" name="test-file-{{ loop.index0 }}" id="test-file-{{ loop.index0 }}"
+                               class="form-control mx-2"/>
+                        <button class="btn btn-danger" onclick="handleRemoveClick(event)">-</button>
+                    </div>
+                {% endfor %}
+                {% with tests_len = tests|length %}
+                    <div class="d-flex flex-row justify-content-between mb-3" id="test-{{ tests_len }}">
+                        <input required type="text" name="test-description-{{ tests_len }}" class="form-control mx-2"
+                               placeholder="Test description"/>
+                        <input required type="file" name="test-file-{{ tests_len }}" id="test-file-{{ tests_len }}"
+                               class="form-control mx-2"/>
+                        <button id="add-btn" class="btn btn-success">+</button>
+                    </div>
+                {% endwith %}
             </div>
         </div>
-
-        <input type="submit" id="submit" class="btn btn-success" value="Submit">
-    </div>
+        <input type="submit" id="submit" class="btn btn-success mb-4" value="Submit">
+        <div id="upload-result"></div>
+    </form>
 {% endblock %}

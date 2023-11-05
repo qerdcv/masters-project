@@ -1,5 +1,8 @@
-const submitButton = document.getElementById('submit');
-submitButton.addEventListener('click', function (e) {
+const form = document.getElementById('tests-form');
+const uploadResult = document.getElementById('upload-result');
+form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
     const data = new FormData();
     data.append('description', document.getElementById('description').value)
     data.append('task_id', taskId)
@@ -15,9 +18,21 @@ submitButton.addEventListener('click', function (e) {
         data.append(descInput.name, descInput.value)
         data.append(fileInput.name, fileInput.files[0])
     }
-    console.log(data.entries());
+
     fetch('/tests', {
         method: 'POST',
         body: data
-    }).catch(console.error);
+    }).then(() => {
+        const el = document.createElement('span');
+        el.classList.add('alert', 'alert-success');
+        el.textContent = 'Success!'
+        uploadResult.innerHTML = el.outerHTML;
+        setTimeout(() => uploadResult.innerHTML = '', 2000);
+    }).catch((e) => {
+        const el = document.createElement('span');
+        el.classList.add('alert', 'alert-danger');
+        el.textContent = 'Failed!';
+        uploadResult.innerHTML = el.outerHTML;
+        setTimeout(() => uploadResult.innerHTML = '', 2000);
+    });
 })

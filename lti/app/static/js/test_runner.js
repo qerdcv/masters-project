@@ -7,6 +7,9 @@ runBtn.addEventListener('click', async () => {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(tests)
+        body: JSON.stringify({
+            task_id: taskId,
+            tests
+        })
     })
 })
