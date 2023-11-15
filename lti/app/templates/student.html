@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script>
         const taskId = "{{ task_id }}";
         const email = "{{ email }}";
@@ -16,11 +17,14 @@
         <h1>Test for: {{ email }}</h1>
         <h2>Server state: <span style="color: red" id="server-state">off</span></h2>
         {% if task %}
-            <p>{{ task.description }}</p>
+            <pre>{{ task.description }}</pre>
             <h3>Tests</h3>
             <ul id="tests">
                 {% for test in tests %}
-                    <li id="test-{{ test.file_name }}" data-test-name="{{ test.file_name }}">{{ test.description }}</li>
+                    <li id="test-{{ test.file_name }}" data-test-name="{{ test.file_name }}">
+                        <span class="test-desc">{{ test.description }}</span>
+                        <div class="result d-flex"></div>
+                    </li>
                 {% endfor %}
             </ul>
             <button id="btn-run" class="btn btn-success">Run tests</button>
