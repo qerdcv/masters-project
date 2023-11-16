@@ -32,7 +32,7 @@ function handleEvent(e) {
           case "failed":
             detail = document.createElement("detail");
             detail.classList.add("alert", "alert-danger");
-            detail.innerText = `
+            detail.innerHTML = `
                 <summary>Error</summary>
                 <pre>${test.result.error}</pre>
               `;
