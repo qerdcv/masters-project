@@ -30,11 +30,12 @@ function handleEvent(e) {
             detail.textContent = "Success";
             break;
           case "failed":
-            detail = document.createElement("detail");
+            const errorMessage = test.result.error.replace("<nil>", "null");
+            detail = document.createElement("details");
             detail.classList.add("alert", "alert-danger");
             detail.innerHTML = `
                 <summary>Error</summary>
-                <pre>${test.result.error}</pre>
+                <pre>${errorMessage}</pre>
               `;
             break;
           default:
