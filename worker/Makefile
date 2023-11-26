@@ -1,0 +1,4 @@
+DEFAULT_EMAIL?=email@example.com
+
+run:
+	USER_EMAIL=$(DEFAULT_EMAIL) LTI_HOST="192.168.31.57:8000" TESTS_DIR="$(PWD)" ENV=local go run .

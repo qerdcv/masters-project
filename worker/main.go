@@ -42,9 +42,9 @@ func fatal(msg string) {
 	os.Exit(1)
 }
 
-type testsRequest struct {
-	TaskID string   `json:"task_id"`
-	Tests  []string `json:"tests"`
+type testRequest struct {
+	TaskID string `json:"task_id"`
+	Test   string `json:"test"`
 }
 
 func proceedMessages(ctx context.Context, c *websocket.Conn) {
@@ -59,19 +59,23 @@ func proceedMessages(ctx context.Context, c *websocket.Conn) {
 				return
 			}
 
-			var tests testsRequest
-			if err = json.Unmarshal(message, &tests); err != nil {
+			var test testRequest
+			if err = json.Unmarshal(message, &test); err != nil {
 				logErr(err.Error())
 				continue
 			}
 
-			results, err := runTests(tests)
+			if test.TaskID == "" {
+				continue
+			}
+
+			result, err := runTest(test.TaskID, test.Test)
 			if err != nil {
 				logErr(err.Error())
 				continue
 			}
 
-			b, err := json.Marshal(results)
+			b, err := json.Marshal(result)
 			if err != nil {
 				logErr(err.Error())
 				continue
@@ -91,20 +95,6 @@ type testResult struct {
 		Status string `json:"status"`
 		Error  string `json:"error,omitempty"`
 	} `json:"result"`
-}
-
-func runTests(testsReq testsRequest) ([]testResult, error) {
-	results := make([]testResult, len(testsReq.Tests))
-	for idx, test := range testsReq.Tests {
-		result, err := runTest(testsReq.TaskID, test)
-		if err != nil {
-			return nil, fmt.Errorf("run test %s: %w", test, err)
-		}
-
-		results[idx] = result
-	}
-
-	return results, nil
 }
 
 func runTest(taskID string, test string) (testResult, error) {
@@ -162,9 +152,9 @@ func main() {
 	}
 
 	u := url.URL{Scheme: scheme, Host: ltiHost, Path: "/ws/server/" + userEmail}
-	c, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		fatal(err.Error() + resp.Status)
+		fatal(err.Error())
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -2,6 +2,7 @@ import datetime
 import os
 import json
 import shutil
+import time
 import typing as t
 
 from flask.json import jsonify
@@ -293,11 +294,34 @@ def run_tests(email):
             "message": "server is offline"
         }), 400
 
-    servers[email].send(request.data)
+    send_server(email, request.data)
+    data = json.loads(receive_server(email))
+    send_client(email, {"event": "test_result", "args": data})
 
-    return jsonify({
-        "message": "ok"
-    })
+    return jsonify(data)
+
+
+def send_server(email: str, data: bytes):
+    if email not in servers:
+        return
+
+    try:
+        servers[email].send(data)
+    except ConnectionClosed:
+        print(f"server connection with {email} closed.")
+        del servers[email]
+        return
+
+
+def receive_server(email: str) -> bytes:
+    if email not in servers:
+        return b""
+
+    try:
+        return servers[email].receive()
+    except ConnectionClosed:
+        print(f"server connection with {email} closed.")
+        del servers[email]
 
 
 def send_client(email: str, event: Event):
@@ -316,12 +340,11 @@ def server_sock(ws: Server, email: str):
 
     while True:
         try:
-            send_client(email, {"event": "test_result", "args": json.loads(ws.receive())})
+            ws.send('{"message": "ping"}')
+            time.sleep(ws.ping_interval)  # Crutch to keep alive connection and not receive messages
         except ConnectionClosed:
-            del servers[email]
-            send_client(email, {"event": "disconnected", "args": []})
             print(f"server connection with {email} closed.")
-            return
+            del servers[email]
 
 
 @sock.route("/ws/client/<email>")
@@ -348,4 +371,4 @@ def download_test(task_id, filename):
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8000)
+    app.run(host="0.0.0.0", port=8000)
