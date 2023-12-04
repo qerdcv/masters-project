@@ -16,7 +16,7 @@
   "http://localhost": [
     {
       "default": true,
-      "client_id": "D98GOHur6VR8GtV",
+      "client_id": "21LoomjSHVDf0rj",
       "auth_login_url": "http://localhost/mod/lti/auth.php",
       "auth_token_url": "http://localhost/mod/lti/token.php",
       "auth_audience": null,
