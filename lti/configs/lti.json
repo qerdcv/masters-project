@@ -22,7 +22,7 @@
       "key_set": null,
       "private_key_file": "private.key",
       "public_key_file": "public.key",
-      "deployment_ids": ["3"]
+      "deployment_ids": ["8"]
     }
   ],
   "http://localhost": [
