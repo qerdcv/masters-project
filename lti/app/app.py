@@ -348,6 +348,7 @@ def server_sock(ws: Server, email: str):
             print(f"server connection with {email} closed.")
             if email in servers:
                 del servers[email]
+            return
 
 
 @sock.route("/ws/client/<email>")
