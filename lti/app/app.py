@@ -309,7 +309,8 @@ def send_server(email: str, data: bytes):
         servers[email].send(data)
     except ConnectionClosed:
         print(f"server connection with {email} closed.")
-        del servers[email]
+        if email in servers:
+            del servers[email]
         return
 
 
@@ -321,7 +322,8 @@ def receive_server(email: str) -> bytes:
         return servers[email].receive()
     except ConnectionClosed:
         print(f"server connection with {email} closed.")
-        del servers[email]
+        if email in servers:
+            del servers[email]
 
 
 def send_client(email: str, event: Event):
@@ -344,7 +346,8 @@ def server_sock(ws: Server, email: str):
             time.sleep(ws.ping_interval)  # Crutch to keep alive connection and not receive messages
         except ConnectionClosed:
             print(f"server connection with {email} closed.")
-            del servers[email]
+            if email in servers:
+                del servers[email]
 
 
 @sock.route("/ws/client/<email>")
@@ -361,7 +364,8 @@ def client_sock(ws: Server, email: str):
             ws.receive()
         except ConnectionClosed:
             print(f"client connection with {email} closed.")
-            del clients[email]
+            if email in clients:
+                del clients[email]
             return
 
 
