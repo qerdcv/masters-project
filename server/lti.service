@@ -1,0 +1,18 @@
+[Unit]
+Description=LTI
+After=systemd-networkd.service
+Before=network-online.target
+
+[Service]
+WorkingDirectory=/opt/apps/lti/app
+ExecStart=/opt/apps/lti/env/bin/python /opt/apps/lti/app/app.py
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=lti
+User=root
+Group=root
+TimeoutStartSec=30
+
+[Install]
+WantedBy=multi-user.target
