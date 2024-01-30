@@ -1,0 +1,293 @@
+---
+- name: VM Basic Configuration
+  hosts: localhost
+  gather_facts: yes
+  become: yes
+  vars:
+    vbox_version: "6.1.26"
+    vbox_guest_iso_url: "https://download.virtualbox.org/virtualbox/{{ vbox_version }}/VBoxGuestAdditions_{{ vbox_version }}.iso"
+    vbox_mount_point: "/mnt/VBoxGuestAdditions"
+  
+  tasks:
+  - name: Colorize root shell prompt
+    lineinfile:
+      path: /etc/bash.bashrc
+      line: 'export PS1="\[\033[38;5;11m\]\u\[$(tput sgr0)\]\[\033[38;5;15m\]@\h:\[$(tput sgr0)\]\[\033[38;5;6m\][\w]:\[$(tput sgr0)\]\[\033[38;5;15m\] \[$(tput sgr0)\]"'
+      state: present
+
+  - name: Alias vi to vim
+    lineinfile:
+      path: /root/.bashrc
+      line: "alias vi='vim'"
+      state: present
+
+  - name: Configure vim
+    copy:
+      dest: /root/.vimrc
+      content: |
+        set nocompatible
+        set number
+        set autoindent
+        syntax on
+        highlight Comment ctermfg=LightCyan
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Enable root SSH login
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "^PermitRootLogin"
+      line: "PermitRootLogin yes"
+      state: present
+
+  - name: Disable quiet boot mode
+    lineinfile:
+      path: /etc/default/grub
+      regexp: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"'
+      line: 'GRUB_CMDLINE_LINUX_DEFAULT=""'
+      state: present
+    
+  # Fix network interface cross-hipervisor naming
+      
+  - name: Set GRUB to use traditional network interface naming
+    lineinfile:
+      path: /etc/default/grub
+      regexp: '^GRUB_CMDLINE_LINUX='
+      line: 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"'
+  
+  - name: Configure /etc/network/interfaces
+    copy:
+      dest: /etc/network/interfaces
+      content: |
+        source /etc/network/interfaces.d/*
+
+        # The loopback network interface
+        auto lo
+        iface lo inet loopback
+        iface lo inet6 loopback
+
+        # The primary network interface
+        allow-hotplug eth0
+        iface eth0 inet dhcp
+        #  iface eth0 inet static
+        #  address 192.168.168.57/24
+        #  gateway 192.168.168.2
+        #  dns-nameservers 1.1.1.1 8.8.8.8 8.8.4.4
+        
+        iface eth0 inet6 dhcp
+
+  - name: Update grub2
+    command: update-grub2
+
+  - name: Upgrade all packages
+    apt:
+      update_cache: yes
+      upgrade: dist
+
+  - name: Install packages
+    apt:
+      name: "{{ packages }}"
+      state: latest
+    vars:
+      packages:
+      - bash-completion
+      - ccze
+      - curl
+      - wget
+      - git
+      - net-tools
+      - rsync
+      - screen
+      - tcpdump
+      - vim
+  
+  - name: Add Bullseye repositories
+    lineinfile:
+      path: /etc/apt/sources.list
+      line: 'deb http://deb.debian.org/debian/ bookworm main contrib non-free'
+      create: yes
+
+  - name: Update apt packages cache
+    apt:
+      update_cache: yes
+
+  - name: Upgrade libc-bin package
+    apt:
+      name: libc-bin
+      state: latest
+
+  - name: Set kernel message logging level
+    sysctl:
+      name: kernel.printk
+      value: "3 4 1 7"
+      state: present
+      reload: yes
+
+  # ---- Install specific VM Tools ---- #
+
+  - name: Install VirtualBox Guest Additions
+    apt:
+      name: virtualbox-guest-additions-iso
+      state: latest
+
+  - name: Install open-vm-tools
+    apt:
+      name: open-vm-tools
+      state: latest
+    # when: ansible_virtualization_type == "VMware"
+
+  # ---- Install Docker on Debian-based Systems ---- #
+  
+  - name: Install prerequisites
+    apt:
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+        - lsb-release
+      state: present
+      update_cache: yes
+
+  - name: Add Docker GPG apt Key
+    apt_key:
+      url: "https://download.docker.com/linux/debian/gpg"
+      state: present
+
+  - name: Add Docker Repository
+    apt_repository:
+      repo: "deb [arch={{ ansible_architecture }}] https://download.docker.com/linux/debian bullseye stable"
+      state: present
+
+  - name: Update apt cache
+    command: apt-cache search docker
+    register: command_output
+
+  - name: Print command output
+    debug:
+      msg: "{{ command_output.stdout_lines }}"
+      
+  - name: Install Docker
+    apt:
+      name:
+        - docker.io
+        # - docker-ce
+        # - docker-ce-cli
+        # - containerd.io
+        # - docker-buildx-plugin
+        # - docker-compose-plugin
+      state: present
+
+  # ---- Configure LMS Worker ---- #
+  
+  - name: Create a new user 'student'
+    user:
+      name: student
+      create_home: yes
+      shell: /bin/bash
+      groups: docker
+      append: yes
+      
+  - name: Configure sudo permissions for student
+    copy:
+      dest: /etc/sudoers.d/student
+      content: |
+        student ALL=(ALL:ALL) NOPASSWD: /usr/bin/apt-get *, /usr/bin/apt *
+        student ALL=(ALL) NOPASSWD: /usr/bin/gpasswd -a student *, /usr/bin/gpasswd -d student *
+      validate: 'visudo -cf %s'
+      owner: root
+      group: root
+      mode: '0440'
+      
+  - name: Remove password and unlock user 'student'
+    shell: |
+      passwd -d student
+      passwd -u student
+  
+  - name: Set global environment variables
+    lineinfile:
+      path: /etc/environment
+      line: "{{ item.var }}={{ item.value }}"
+      state: present
+      create: yes
+    loop:
+      - { var: "ENV", value: "prod" }
+      - { var: "LTI_HOST", value: "lti.lapers.net" }
+      - { var: "TESTS_DIR", value: "/opt/lms/tests" }
+    no_log: yes
+
+  - name: Copy PAM shared library
+    copy:
+      src: "/tmp/pam_oidc.so"
+      dest: "/lib/x86_64-linux-gnu/security/pam_oidc.so"
+      owner: "root"
+      group: "root"
+      mode: '0644'
+    
+  - name: Create systemd service file
+    copy:
+      dest: "/etc/pam.d/common-auth"
+      owner: "root"
+      group: "root"
+      mode: '0644'
+      content: |
+        auth    [success=1 default=ignore]      pam_succeed_if.so user in student
+        auth    [success=2 default=ignore]      pam_succeed_if.so user in root:admin
+        auth    [success=1 default=ignore]      pam_oidc.so client-id=328785469815-na6da1jglg8up5r195ccij04s9c5jpkv.apps.googleusercontent.com client-secret=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
+        auth    [default=die]                   pam_deny.so
+        auth    optional                        pam_unix.so nullok
+
+  - name: Create tests directory
+    file:
+      path: "/opt/lms/tests"
+      state: directory
+      owner: "root"
+      group: "root"
+      mode: '0700'
+  
+  - name: Ensure the file have execute permissions
+    file:
+      path: "/opt/lms/worker"
+      owner: "root"
+      group: "root"
+      mode: '0700'
+      
+  - name: Ensure service controller have right permissions
+    file:
+      path: "/opt/lms/service.sh"
+      owner: "root"
+      group: "root"
+      mode: '0700'
+
+  - name: Create systemd service file
+    copy:
+      dest: "/etc/systemd/system/lms-worker.service"
+      owner: "root"
+      group: "root"
+      mode: '0644'
+      content: |
+        [Unit]
+        Description=LTI Connector
+        After=network.target
+
+        [Service]
+        Type=forking
+        ExecStart=/opt/lms/service.sh start
+        ExecStop=/opt/lms/service.sh stop
+        EnvironmentFile=/etc/environment
+        TimeoutStartSec=0
+        Restart=on-failure
+        RestartSec=5s
+
+        [Install]
+        WantedBy=multi-user.target
+    notify: Reload systemd and enable service
+
+  handlers:
+  - name: Reload systemd and enable service
+    systemd:
+      daemon_reload: yes
+      enabled: yes
+      name: lms-worker.service
+      state: started
