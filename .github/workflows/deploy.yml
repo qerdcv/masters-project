@@ -19,6 +19,7 @@ jobs:
 
       - name: Deploy
         run: |
+          ls -l
           rsync -avz lti/* ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/apps/lti
           ssh -T ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << EOF
             sudo systemctl restart lti
