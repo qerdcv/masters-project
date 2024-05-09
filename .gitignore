@@ -140,3 +140,6 @@ dmypy.json
 
 # library symlink (for development)
 pylti1p3
+
+
+vars.tfvars
