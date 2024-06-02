@@ -53,15 +53,17 @@ migrate = Migrate(app, db)
 
 PAGE_TITLE = "LTI"
 
-
+# alias to get config path
 def get_lti_config_path():
     return os.path.join(app.root_path, "..", "configs", "lti.json")
 
 
+# alias to get flask`s app cache storage
 def get_launch_data_storage():
     return FlaskCacheDataStorage(cache)
 
 
+# returns jwk keys from config
 def get_jwk_from_public_key(key_name):
     key_path = os.path.join(app.root_path, "configs", key_name)
     f = open(key_path, "r")
@@ -89,12 +91,14 @@ class Test(db.Model):
     file_name = db.Column(db.String(255), nullable=False)
 
 
+# returns json web token key set
 @app.route("/jwks/", methods=["GET"])
 def get_jwks():
     tool_conf = ToolConfJsonFile(get_lti_config_path())
     return jsonify(tool_conf.get_jwks())
 
 
+# login is used to authorize user that comes from the LMS
 @app.route("/login/", methods=["GET", "POST"])
 def login():
     tool_conf = ToolConfJsonFile(get_lti_config_path())
@@ -111,6 +115,9 @@ def login():
         .redirect(target_link_uri)
 
 
+# Main route.
+# this route is used to render main template for teacher and student
+# it has bunch of parameters that gets in (check message_launch data type for more information)
 @app.route("/", methods=["POST"])
 def launch():
     tool_conf = ToolConfJsonFile(get_lti_config_path())
@@ -138,12 +145,14 @@ def launch():
             "tests": task.tests
         })
 
+    # conditional render for teacher and student
     if message_launch.check_teacher_access():
         return render_template("teacher.html", **tpl_kwargs)
 
     return render_template("student.html", **tpl_kwargs)
 
 
+# This endpoint is used to put mark on the task in the LMS.
 @app.route("/api/score/<launch_id>/<earned_score>", methods=["POST"])
 def score(launch_id, earned_score):
     tool_conf = ToolConfJsonFile(get_lti_config_path())
@@ -183,6 +192,7 @@ def score(launch_id, earned_score):
     return jsonify({"success": True, "result": result.get("body")})
 
 
+# Returns scores for the task from the LMS. Currently unused, but can be used for contest spirit
 @app.route("/api/scoreboard/<launch_id>/", methods=["GET", "POST"])
 def scoreboard(launch_id):
     tool_conf = ToolConfJsonFile(get_lti_config_path())
@@ -244,6 +254,7 @@ def scoreboard(launch_id):
     return jsonify(scoreboard_result)
 
 
+# endpoint that used to create test entity
 @app.route('/tests', methods=['POST'])
 def create_tests():
     form = request.form
@@ -251,11 +262,14 @@ def create_tests():
     media_root = app.config['MEDIA_ROOT']
     task_dir = os.path.join(media_root, str(task_id))
 
+    # cleanup previous task
+    # It has 1 to 1 relation between LMS task, So much easier to remove previous data, than update current
     db.session.query(Task).filter(Task.id == task_id).delete()
     db.session.query(Test).filter(Test.task_id == task_id).delete()
 
     task = Task(id=form['task_id'], description=form['description'])
     db.session.add(task)
+    # if task already has executable tests - cleanup it
     if not os.path.exists(task_dir):
         os.mkdir(task_dir)
     else:
@@ -263,6 +277,7 @@ def create_tests():
         shutil.rmtree(task_dir)
         os.mkdir(task_dir)
 
+    # iterate over files and store it into database
     for tf in request.files:
         f = request.files[tf]
         filename = secure_filename(f.filename)
@@ -285,23 +300,31 @@ class Event(t.TypedDict):
     args: list
 
 
+# endpoint to run tests for specific student. (student is determined via email)
 @app.route("/tests/run/<email>", methods=["POST"])
 def run_tests(email):
     global servers
 
+    # if for current student no virtual machine running - return 400 error
     if email not in servers:
         return jsonify({
             "message": "server is offline"
         }), 400
 
+    # send to student`s virtual machine event, to run test
     send_server(email, request.data)
+    # wait for response
     data = json.loads(receive_server(email))
+    # send event to the student via websocket
     send_client(email, {"event": "test_result", "args": data})
 
+    # return json response
     return jsonify(data)
 
 
+# send event to the student`s virtual machine via websocket
 def send_server(email: str, data: bytes):
+    # if there is no email (or student`s machine connection) in the cache - nothing to do here
     if email not in servers:
         return
 
@@ -309,11 +332,13 @@ def send_server(email: str, data: bytes):
         servers[email].send(data)
     except ConnectionClosed:
         print(f"server connection with {email} closed.")
+        # if virtual machine is disconnected - remove dead connection from the cache
         if email in servers:
             del servers[email]
         return
 
 
+# receive will wait for the first message from the server received and return it in the byte representation
 def receive_server(email: str) -> bytes:
     if email not in servers:
         return b""
@@ -326,6 +351,7 @@ def receive_server(email: str) -> bytes:
             del servers[email]
 
 
+# same logic as for server, but for client (or web interface for now)
 def send_client(email: str, event: Event):
     if email not in clients:
         return
@@ -333,6 +359,7 @@ def send_client(email: str, event: Event):
     clients[email].send(json.dumps(event))
 
 
+# endpoint that used by student`s virtual machine to connect to the server, and receive events.
 @sock.route("/ws/server/<email>")
 def server_sock(ws: Server, email: str):
     global servers
@@ -351,6 +378,8 @@ def server_sock(ws: Server, email: str):
             return
 
 
+# endpoint that used by client (web interface for now), to connect to the backend via websocket, and receive any update-events
+# in realtime
 @sock.route("/ws/client/<email>")
 def client_sock(ws: Server, email: str):
     global clients
@@ -370,6 +399,8 @@ def client_sock(ws: Server, email: str):
             return
 
 
+
+# this endpoint is used by studen`s virtual machine to download test`s executable file
 @app.route("/tests/download/<task_id>/<filename>", methods=["GET"])
 def download_test(task_id, filename):
     return send_file(os.path.join(app.config['MEDIA_ROOT'], task_id, filename))

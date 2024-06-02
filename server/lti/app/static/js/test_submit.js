@@ -1,38 +1,45 @@
-const form = document.getElementById('tests-form');
-const uploadResult = document.getElementById('upload-result');
-form.addEventListener('submit', function (e) {
-    e.preventDefault();
+/*
+    This module is used to parse form from the teachers page and accumulate all data in the single request
+    to create Task, and Test entities
+*/
 
-    const data = new FormData();
-    data.append('description', document.getElementById('description').value)
-    data.append('task_id', taskId)
+const form = document.getElementById("tests-form");
+const uploadResult = document.getElementById("upload-result");
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
 
-    const tests = document.getElementById('tests');
+  const data = new FormData();
+  data.append("description", document.getElementById("description").value);
+  data.append("task_id", taskId);
 
-    for (let test of tests.children) {
-        const inputs = test.querySelectorAll('input');
+  const tests = document.getElementById("tests");
 
-        const descInput = inputs[0];
-        const fileInput = inputs[1];
+  for (let test of tests.children) {
+    const inputs = test.querySelectorAll("input");
 
-        data.append(descInput.name, descInput.value)
-        data.append(fileInput.name, fileInput.files[0])
-    }
+    const descInput = inputs[0];
+    const fileInput = inputs[1];
 
-    fetch('/tests', {
-        method: 'POST',
-        body: data
-    }).then(() => {
-        const el = document.createElement('span');
-        el.classList.add('alert', 'alert-success');
-        el.textContent = 'Success!'
-        uploadResult.innerHTML = el.outerHTML;
-        setTimeout(() => uploadResult.innerHTML = '', 2000);
-    }).catch((e) => {
-        const el = document.createElement('span');
-        el.classList.add('alert', 'alert-danger');
-        el.textContent = 'Failed!';
-        uploadResult.innerHTML = el.outerHTML;
-        setTimeout(() => uploadResult.innerHTML = '', 2000);
+    data.append(descInput.name, descInput.value);
+    data.append(fileInput.name, fileInput.files[0]);
+  }
+
+  fetch("/tests", {
+    method: "POST",
+    body: data,
+  })
+    .then(() => {
+      const el = document.createElement("span");
+      el.classList.add("alert", "alert-success");
+      el.textContent = "Success!";
+      uploadResult.innerHTML = el.outerHTML;
+      setTimeout(() => (uploadResult.innerHTML = ""), 2000);
+    })
+    .catch((e) => {
+      const el = document.createElement("span");
+      el.classList.add("alert", "alert-danger");
+      el.textContent = "Failed!";
+      uploadResult.innerHTML = el.outerHTML;
+      setTimeout(() => (uploadResult.innerHTML = ""), 2000);
     });
-})
+});
